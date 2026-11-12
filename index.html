@@ -202,6 +202,24 @@ textarea{width:100%;min-height:150px;font-family:var(--f-mono);font-size:12px;ba
 .dots{display:flex;gap:6px}
 .dots button{width:10px;height:10px;border-radius:50%;border:1px solid var(--muted);background:transparent;padding:0;cursor:pointer}
 .dots button[aria-current="step"]{background:var(--accent);border-color:var(--accent)}
+.mcard.wz{width:min(780px,100%);max-height:100%;overflow:hidden;padding:0;gap:0}
+.wzh0{padding:16px 22px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.wzp{height:4px;background:var(--line);border-radius:2px;overflow:hidden}.wzp i{display:block;height:100%;background:var(--accent)}
+.wzb{padding:16px 22px;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+.wzf{padding:12px 22px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.wztip{border-left:3px solid var(--accent);background:var(--panel-2);padding:8px 12px;border-radius:4px;font-size:13.5px}
+.wzcard{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--panel-2);min-width:0}
+.wzcard.sugg{border-style:dashed}
+.wzlist{display:flex;flex-direction:column;gap:6px}
+.wzchk{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+.wzmeter{padding:8px 12px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);font-size:13.5px}.wzmeter.ok{border-color:var(--accent)}
+.wzh{margin:0 0 6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.wz4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;font-size:13px}.wz4>div{padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}.wz4 b{display:block}
+.wzrate{display:grid;grid-template-columns:minmax(0,1fr) repeat(4,64px);gap:6px;align-items:center;font-size:13px}.wzrate.hd{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);text-transform:uppercase}.wzrate.hd span{text-align:center}
+.wzrate .nm{overflow-wrap:anywhere}
+.wzlad{display:flex;flex-direction:column;gap:8px}
+@media(max-width:520px){.wzrate{grid-template-columns:minmax(0,1fr) repeat(4,50px);gap:4px}.wzrate.hd{font-size:9px}}
+.wzrate select{padding:6px 2px;text-align:center;text-align-last:center}
 .lad{display:grid;gap:6px}
 .lad div{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
 .lad .lvl{flex:none}
@@ -227,7 +245,7 @@ textarea{width:100%;min-height:150px;font-family:var(--f-mono);font-size:12px;ba
 </div></main>
 <div class="toast" id="toast" role="status"></div>
 <input type="file" id="loadfile" accept=".json,application/json" hidden>
-<div class="modal" id="onb" role="dialog" aria-modal="true" aria-labelledby="onbT" hidden><div class="mcard" id="onbC" tabindex="-1"></div></div>
+<div class="modal" id="onb" role="dialog" aria-modal="true" aria-labelledby="onbT" hidden><div class="mcard wz" id="onbC" tabindex="-1"></div></div>
 
 <script>
 /* ================= data ================= */
@@ -575,7 +593,7 @@ function renderHead(){const t=T();$('tierName').textContent='· '+t.label;
  $('head').innerHTML=`<section class="card"><span class="eyebrow">${t.label} PACE plan</span>
  <div class="tiers" role="tablist" aria-label="Plan tier">${Object.entries(TIERS).map(([k,v])=>`<button type="button" role="tab" data-act="tier" data-id="${k}" aria-selected="${k===TIER}">${v.label}</button>`).join('')}</div>
  <h1>${t.h1}</h1><p class="muted">${t.intro}</p>
- <div class="row" style="gap:8px"><button type="button" class="btn sm" data-act="help">How PACE Snap works</button><button type="button" class="btn sm" data-act="saveFile">Save progress</button><button type="button" class="btn sm" data-act="loadFile">Load progress</button><button type="button" class="btn sm" data-act="allPdf">Download all plans (PDF)</button><button type="button" class="btn sm" data-act="sample">${SAMPLEARM?'Replace my plan? Click again':'Load sample plan'}</button></div>
+ <div class="row" style="gap:8px"><button type="button" class="btn sm" data-act="help">Guided setup</button><button type="button" class="btn sm" data-act="saveFile">Save progress</button><button type="button" class="btn sm" data-act="loadFile">Load progress</button><button type="button" class="btn sm" data-act="allPdf">Download all plans (PDF)</button><button type="button" class="btn sm" data-act="sample">${SAMPLEARM?'Replace my plan? Click again':'Load sample plan'}</button></div>
  ${S.sample?`<div class="flag warn"><b>This is a sample plan</b> with made-up contacts, so you can see what a finished plan looks like. <div class="row" style="gap:8px;margin-top:6px"><button type="button" class="btn sm pri" data-act="clearSample">Clear sample and start my own</button></div></div>`:''}
  <div class="grid2">
   <label class="fld">${t.whoL}<input type="text" id="who" data-bind="who" placeholder="${esc(t.whoP)}" value="${esc(S.who)}"></label>
@@ -854,19 +872,125 @@ async function exportAll(btn){const label=btn&&btn.textContent;if(btn){btn.disab
 /* ================= events ================= */
 /* ================= onboarding, save/load, csv ================= */
 let CSVC=false,ONB=0,SAMPLEARM=false,RESETARM=false;
-const ONB_STEPS=[
- {t:'Be reachable when it counts',b:()=>`<p>PACE Snap helps you build a communications plan that tells other people <b>how to reach you</b>, in what order to try, and <b>when you are listening</b>. It takes about ten minutes per plan, and the result is a one-page shared plan you can hand to anyone.</p><p>You pick your own gear and contacts. Nothing is filled in for you, so the plan reflects what you really have.</p>`},
- {t:'The PACE idea',b:()=>`<p>PACE is a military-derived method. Instead of improvising when something fails, you decide in advance what comes next.</p><div class="lad">${LEVELS.map(l=>`<div><span class="lvl ${l.c}">${l.k}</span><span><b>${l.name}</b>: ${({P:'your everyday method (cell, VoIP, email)',A:'a common backup on a different path (second carrier, SMS)',C:'a strategic fallback (satellite, a different location)',E:'the last resort (HF radio, SHARES, mesh, a runner)'})[l.k]}</span></div>`).join('')}</div>`},
- {t:'The right mindset',b:()=>`<ul><li><b>Plan for losing what you depend on</b>, not for one kind of incident. A good plan is all-hazards.</li><li><b>Each rung needs its own failure path.</b> Two methods on the same tower, power feed, or internet link are one method.</li><li><b>Reachable means monitored.</b> A number nobody is watching is not a contact. Say when you are listening: always, on a schedule, or once the methods above stop working.</li><li><b>Untested is unproven.</b> A plan is ready for testing, not ready to trust, until you have made a real two-way contact on each rung.</li></ul>`},
- {t:'Four checks for every method',b:()=>`<p>Rate each asset honestly on:</p><ul><li><b>Power</b>: how long it runs on battery or generator, and fuel availability.</li><li><b>Availability</b>: is it monitored 24/7 and recently tested?</li><li><b>Compatibility</b>: can the other side actually talk to it (for example ALE for HF)?</li><li><b>Ease of use</b>: can someone use it under stress, in the dark, in bad weather?</li></ul><p class="muted">Readiness also uses the CISA criteria: feasible, acceptable, suitable, distinguishable, complete.</p>`},
- {t:'How PACE Snap works',b:()=>`<ol><li><b>Reasons to reach you.</b> Keep or add the functions people need you for.</li><li><b>Your kit.</b> Check only what you really have. It starts empty.</li><li><b>The plan builds itself.</b> You get a P-A-C-E ladder for each reason, with an explanation for each rung. Change any rung you like.</li><li><b>Contacts and listening.</b> Add contact details and say when you are monitoring each method.</li><li><b>Check the drills and gates.</b> They show where an outage would break your plan.</li><li><b>Share.</b> Download the shared plan PDF, or a CSV to compile plans.</li></ol><p class="muted">Extra carriers and spare methods go under <b>Backup methods</b> so the ladders stay clean.</p>`},
- {t:'Your data and where to start',b:()=>`<p>Want to see a finished plan first? Use <b>Load sample plan</b>. Everything else stays in this browser. Use <b>Save progress</b> to download a file and <b>Load progress</b> to pick up later or on another device. Exports contain contact details, so share them with care.</p><p><b>Which plan are you building?</b></p><div class="pickt">${Object.entries(TIERS).map(([k,v])=>`<button type="button" class="btn ${k===TIER?'pri':''}" data-act="onbTier" data-id="${k}">${v.label}</button>`).join('')}</div>`}];
-function onbRender(){const st=ONB_STEPS[ONB],last=ONB===ONB_STEPS.length-1;
- $('onbC').innerHTML=`<span class="mstep">Step ${ONB+1} of ${ONB_STEPS.length}</span><h2 id="onbT">${st.t}</h2>${st.b()}
- <div class="mfoot"><div class="dots" role="group" aria-label="Steps">${ONB_STEPS.map((_,i)=>`<button type="button" data-act="onbGo" data-i="${i}" aria-label="Step ${i+1}" ${i===ONB?'aria-current="step"':''}></button>`).join('')}</div>
- <div class="row" style="gap:8px">${last?'':'<button type="button" class="btn sm" data-act="onbClose">Skip</button>'}${ONB>0?'<button type="button" class="btn" data-act="onbBack">Back</button>':''}<button type="button" class="btn pri" data-act="${last?'onbClose':'onbNext'}">${last?'Start building':'Next'}</button></div></div>`}
-function onbOpen(){ONB=0;onbRender();$('onb').hidden=false;$('onbC').focus()}
-function onbClose(){$('onb').hidden=true;try{localStorage.setItem('pace-snap-onb','1')}catch(e){}}
+/* ---- guided setup: learn the app by building your Personal PACE plan ---- */
+const WZ=[
+ {n:'You',t:'Let\'s build your Personal PACE plan'},
+ {n:'The idea',t:'The PACE idea'},
+ {n:'Reasons',t:'Why people need to reach you'},
+ {n:'Your kit',t:'What you actually have'},
+ {n:'Four checks',t:'Rate your gear honestly'},
+ {n:'Your ladder',t:'Your PACE ladder'},
+ {n:'Contacts',t:'How others reach you'},
+ {n:'Listening',t:'When you are listening'},
+ {n:'Backups',t:'Backup methods'},
+ {n:'Check',t:'Check your plan'},
+ {n:'Share',t:'Share it and test it'}];
+const wzTip=h=>`<div class="wztip"><b>Mindset.</b> ${h}</div>`;
+const wzUsed=()=>{const m=new Map();activeFns().forEach(f=>view(f.id).rows.forEach(r=>{if(!r.A)return;if(!m.has(r.id))m.set(r.id,{A:r.A,fns:[]});m.get(r.id).fns.push(f)}));return[...m.values()]};
+const wzFirst=(o,u)=>{for(const f of u.fns){const v=o==='c'?contactOf(f.id,u.A.id):((S.tested[f.id]||{})[u.A.id]||'');if(v)return v}return ''};
+function contactHint(A){const p=A.path;
+ if(p.some(x=>['att','vz','tmo','wire'].includes(x)))return 'Phone number, e.g. 503-555-0123';
+ if(p.some(x=>['iridium','msat','starlink','geo'].includes(x)))return 'Satellite number, device name or account';
+ if(p.includes('hf'))return 'Call sign and frequency or ALE address';
+ if(p.includes('mesh'))return 'Node name and channel';
+ if(p.some(x=>['lmr','slmr','issi','simplex','rptr','prptr','manet'].includes(x)))return 'Talkgroup, channel or repeater';
+ if(p.includes('human'))return 'Where to find you, or the rally point';
+ if(p.includes('net')||p.includes('fiber')||p.includes('isp'))return 'Email address or app handle';
+ return 'How a caller reaches you on this'}
+function wzMonBase(f,id){const b={...monEff(f,id)};delete b.confirmed;return b}
+function wzMon(id,patch){activeFns().forEach(f=>{const o=monSet(f.id,id);Object.assign(o,wzMonBase(f.id,id),patch)});save()}
+function wzSync(){render();wzRender()}
+const wzStore=()=>{try{localStorage.setItem('pace-snap-onb-step',String(ONB))}catch(e){}};
+function wzBody(){const T_=T();
+ switch(ONB){
+ case 0:return `<p>In about ten minutes you will learn how PACE Snap works by building <b>your own plan</b>. Each step teaches one idea and asks for one thing. Everything saves as you go, so you can leave and pick up later with <b>Guided setup</b>.</p>
+  <div class="grid2"><label class="fld">Name or call sign<input type="text" data-w="who" value="${esc(S.who)}" placeholder="${esc(T_.whoP)}"></label><label class="fld">Home base / area<input type="text" data-w="base" value="${esc(S.base)}" placeholder="${esc(T_.baseP)}"></label></div>
+  <p class="muted">This appears at the top of the plan you share.</p>
+  <div class="row" style="gap:8px"><button type="button" class="btn sm" data-act="wzSample">Just show me a finished sample plan</button></div>`;
+ case 1:return `<p>PACE is a military-derived method. Instead of improvising when something fails, you decide in advance what comes next.</p>
+  <div class="lad">${LEVELS.map(l=>`<div><span class="lvl ${l.c}">${l.k}</span><span><b>${l.name}</b>: ${({P:'your everyday method (cell, VoIP, email)',A:'a common backup on a different path (a second carrier, SMS)',C:'a strategic fallback (satellite, a different location)',E:'the last resort (HF radio, SHARES, mesh, a runner)'})[l.k]}</span></div>`).join('')}</div>
+  <ul><li><b>Plan for losing what you depend on</b>, not for one kind of incident. A good plan is all-hazards.</li><li><b>Each rung needs its own failure path.</b> Two methods on the same tower, power feed or internet link are really one method.</li><li><b>Reachable means monitored.</b> A number nobody is watching is not a contact.</li><li><b>Untested is unproven.</b> At the end you will have a plan that is ready for testing, not yet trusted.</li></ul>
+  ${wzTip('This tool is about <b>how others reach you</b>. You will list the reasons people need you, the gear you have, and when you are listening on each method.')}`;
+ case 2:{const sug=['My supervisor reaches me','My team reaches me in the field','My neighbors or community reach me'].filter(n=>!S.fns.some(f=>f.name===n));
+  return `<p>Everyone reaches you for different reasons. <b>Each reason gets its own ladder</b>, because the best method for a duty officer is not the best one for your family. Keep what applies, and add your own.</p>
+  <div class="wzlist">${S.fns.map((f,i)=>`<label class="wzchk"><input type="checkbox" data-act="wzFn" data-idx="${i}" ${f.on?'checked':''}><span>${esc(f.name)}</span></label>`).join('')}</div>
+  ${sug.length?`<div class="row" style="gap:6px"><span class="muted">Add:</span>${sug.map(n=>`<button type="button" class="ev" data-act="wzFnAdd" data-n="${esc(n)}">+ ${esc(n)}</button>`).join('')}</div>`:''}
+  <div class="row" style="gap:8px;align-items:flex-end"><label class="fld" style="flex:1 1 240px">Another reason<input type="text" id="w-newfn" placeholder="e.g. My mutual-aid partners reach me"></label><label class="fld">Type<select id="w-newtype">${Object.entries(TYPES_S).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><button type="button" class="btn sm" data-act="wzFnAdd">Add</button></div>
+  ${wzTip('Think of the three people most likely to need you on your worst day. Their reasons are your functions.')}`}
+ case 3:{const groups=[...new Set(allAssets().map(a=>a.g))],inv=invList(),paths=new Set(inv.flatMap(a=>a.path)).size;
+  return `<p>Check <b>only what you really carry and can operate today</b>. The kit starts empty on purpose, so the plan reflects reality and not wishes.</p>
+  <div class="wzmeter ${paths>=4?'ok':''}"><b>${inv.length}</b> in your kit, on <b>${paths}</b> different path${paths===1?'':'s'}. ${paths>=4?'That is enough for a full four-rung ladder.':`You need methods on at least four different paths. Add ${4-paths} more.`}</div>
+  ${groups.map(g=>`<div><h4 class="wzh">${esc(g)}</h4><div class="assets">${allAssets().filter(a=>a.g===g).map(a=>`<button type="button" class="asset" data-act="wzInv" data-id="${a.id}" aria-pressed="${!!S.inv[a.id]}"><span class="nm">${esc(a.name)}<span class="ck">${S.inv[a.id]?'✓ In kit':'+ Add'}</span></span><span class="nt">${esc(a.note)}</span><span class="tags">${pathChips(a)}</span></button>`).join('')}</div></div>`).join('')}
+  <details class="addit"><summary>Something not listed? Add your own</summary><div class="grid2"><label class="fld">Item name<input type="text" id="w-cn" placeholder="e.g. Spare Verizon hotspot"></label><label class="fld">Module<select id="w-cg">${groups.map(g=>`<option>${esc(g)}</option>`).join('')}</select></label><label class="fld">Path it rides<select id="w-cp">${Object.entries(PATHS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label class="fld">Mode<input type="text" id="w-cm" placeholder="Voice, text, data"></label><label class="fld">It needs<select id="w-cc"><option value="">Nothing special</option>${Object.entries(CONDS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label></div><div><button type="button" class="btn sm" data-act="wzAddAsset">Add to kit</button></div></details>
+  ${wzTip('Count the <b>paths</b>, not the devices. Three phones on one carrier are still one path.')}`}
+ case 4:{const inv=invList();
+  return `<p>Every method is scored on four checks, 1 (weak) to 3 (strong). The plan builder uses your scores, so be honest. Your worst day is the test.</p>
+  <div class="wz4"><div><b>Power</b> battery or generator, and fuel</div><div><b>Availability</b> monitored 24/7 and recently tested</div><div><b>Compatibility</b> the other side can actually receive it (for example ALE for HF)</div><div><b>Ease</b> usable under stress, in the dark, in bad weather</div></div>
+  ${inv.length?`<div class="wzrate hd"><span></span>${['Power','Avail.','Compat.','Ease'].map(r=>`<span>${r}</span>`).join('')}</div>${inv.map(a=>{const r=effR(a);return `<div class="wzrate"><span class="nm">${esc(a.name)}</span>${r.map((v,k)=>`<select data-w="rate" data-id="${a.id}" data-k="${k}" aria-label="${esc(a.name)} ${RATE[k][0]}">${[1,2,3].map(n=>`<option value="${n}" ${v===n?'selected':''}>${n}</option>`).join('')}</select>`).join('')}</div>`}).join('')}`:'<div class="flag bad">Your kit is empty. Go back and add what you have.</div>'}
+  ${wzTip('A method rated 1 on Availability or Ease is a method that will not be there when you need it. The builder avoids those.')}`}
+ case 5:{const Fs=activeFns();if(!Fs.length)return '<div class="flag bad">No reasons are switched on. Go back to step 3.</div>';
+  const f=curTab(),v=view(f),fo=fnById(f),au=autoOf(f);
+  return `<p>Here is the ladder the builder made from your kit: <b>four methods on four different paths</b>, in the order callers should try them. Change any rung if you know better.</p>
+  <label class="fld">Reason<select data-w="tab">${Fs.map(x=>`<option value="${x.id}" ${x.id===f?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label>
+  <div class="wzlad">${v.rows.map(r=>{const why=r.A?rationale(v.ids,r.i,f):null;return `<div class="wzcard"><div class="row" style="gap:10px"><span class="lvl ${r.l.c}">${r.l.k}</span><b>${r.l.name}</b><select data-w="swap" data-i="${r.i}" style="flex:1;min-width:0" aria-label="${r.l.name} method"><option value="">(empty)</option>${invList().map(a=>`<option value="${a.id}" ${a.id===r.id?'selected':''}>${esc(a.name)}</option>`).join('')}</select></div>
+   ${r.A?`<div class="row" style="gap:4px">${pathChips(r.A)}</div><div class="muted" style="font-size:12.5px">${esc(why[1])} ${esc(why[2])}</div>`:'<div class="muted">Nothing here yet. Add a method on a new path to fill it.</div>'}</div>`}).join('')}</div>
+  ${v.cl.length?`<div class="flag bad">Shared failure point: ${v.cl.map(c=>`${LEVELS[c.i].name} and ${LEVELS[c.j].name} both depend on ${c.sh.join(', ')}`).join('; ')}. One failure takes out both.</div>`:filled(v.ids)===4?'<div class="flag good">Four rungs, four separate paths.</div>':`<div class="flag bad">${gapAdvice(v.ids,fo.type||'any',f)||'Fill every rung.'}</div>`}
+  <div class="row" style="gap:8px">${S.manual[f]?'<button type="button" class="btn sm" data-act="wzAuto">Rebuild this ladder automatically</button>':'<span class="muted">Auto-built from your kit</span>'}</div>
+  ${wzTip('The ladder is only as good as its weakest shared dependency. If two rungs fail together, they are one rung.')}`}
+ case 6:{const U=wzUsed();if(!U.length)return '<div class="flag bad">Your ladders are empty. Go back to build them.</div>';
+  return `<p>Now give people what they will actually use to reach you on each method. You enter each one once, and it applies to every reason that uses it.</p>
+  ${U.map(u=>`<div class="wzcard"><div class="row" style="gap:8px"><b>${esc(u.A.name)}</b>${pathChips(u.A)}</div><label class="fld">How others reach you<input type="text" data-w="contact" data-id="${u.A.id}" value="${esc(wzFirst('c',u))}" placeholder="${esc(contactHint(u.A))}"></label><div class="muted" style="font-size:12.5px">Used for: ${u.fns.map(f=>esc(f.name)).join('; ')}</div></div>`).join('')}
+  ${wzTip('Write it the way a caller would dial it. A contact that needs explaining will fail under stress.')}`}
+ case 7:{const U=wzUsed();if(!U.length)return '<div class="flag bad">Your ladders are empty. Go back to build them.</div>';
+  const un=U.filter(u=>!monEff(u.fns[0].id,u.A.id).confirmed).length;
+  return `<p>A contact only helps if <b>someone is listening</b>. For each method say when you monitor it. Anything not always on needs a start condition that callers can understand.</p>
+  ${un?`<div class="row" style="gap:8px"><button type="button" class="btn sm pri" data-act="wzMonAll">Accept all ${un} suggestion${un===1?'':'s'}</button><span class="muted">Suggested settings are marked. Change any you disagree with.</span></div>`:'<div class="flag good">All monitoring settings confirmed.</div>'}
+  ${U.map(u=>{const f0=u.fns[0].id,m=monEff(f0,u.A.id);return `<div class="wzcard${m.confirmed?'':' sugg'}"><div class="row" style="gap:8px"><b>${esc(u.A.name)}</b>${m.confirmed?'':'<span class="chip">Suggested</span>'}</div>
+   <div class="grid2"><label class="fld">Monitoring<select data-w="monm" data-id="${u.A.id}">${Object.entries(MONLAB).map(([k,v])=>`<option value="${k}" ${m.m===k?'selected':''}>${v}</option>`).join('')}</select></label>
+   ${m.m==='trig'?`<label class="fld">Ready within<input type="text" data-w="rd" data-id="${u.A.id}" value="${esc(m.rd||'')}" placeholder="e.g. 15 minutes"></label>`:''}${m.m==='sched'?`<label class="fld">Schedule<input type="text" data-w="sched" data-id="${u.A.id}" value="${esc(m.sched||'')}" placeholder="e.g. Net 0800 and 1600 daily"></label>`:''}
+   <label class="fld">Last tested (optional)<input type="text" data-w="tested" data-id="${u.A.id}" value="${esc(wzFirst('t',u))}" placeholder="YYYY-MM-DD"></label></div>
+   ${m.m==='trig'?`<div class="evs">${TRIG_EVENTS.map(e=>`<button type="button" class="ev" data-act="wzTrig" data-id="${u.A.id}" data-e="${e.id}" aria-pressed="${(m.t||[]).includes(e.id)}">${e.name}</button>`).join('')}</div>`:''}</div>`}).join('')}
+  ${wzTip('Triggers are conditions, not incidents. "Callers cannot reach the rungs above" works for every hazard.')}`}
+ case 8:{const onL=new Set(wzUsed().map(u=>u.A.id)),used=new Set(S.alts.map(x=>x.id)),pool=invList().filter(a=>!used.has(a.id));
+  return `<p>Anything else that reaches you goes here: a second or third carrier, a spare radio, another email. Backups stay <b>off the ladders</b> so the plan stays clean, and appear as one short list. This step is optional.</p>
+  ${S.alts.map((x,i)=>asset(x.id)&&S.inv[x.id]?`<div class="wzcard"><b>${esc(asset(x.id).name)}</b><div class="grid2"><label class="fld">How others reach you<input type="text" data-w="altc" data-i="${i}" value="${esc(x.contact||'')}" placeholder="${esc(contactHint(asset(x.id)))}"></label><label class="fld">Note<input type="text" data-w="altn" data-i="${i}" value="${esc(x.note||'')}" placeholder="e.g. covers the coast"></label></div><div><button type="button" class="btn sm" data-act="wzAltDel" data-i="${i}">Remove</button></div></div>`:'').join('')}
+  ${pool.length?`<div class="row" style="gap:8px;align-items:flex-end"><label class="fld" style="flex:1 1 220px">Add from your kit<select id="w-altpick"><option value="">Choose a method</option>${pool.map(a=>`<option value="${a.id}">${esc(a.name)}${onL.has(a.id)?' (already on a ladder)':''}</option>`).join('')}</select></label><button type="button" class="btn sm" data-act="wzAltAdd">Add</button></div>`:'<p class="muted">Everything in your kit is already listed.</p>'}
+  ${wzTip('Redundancy is cheap on paper and priceless in practice. Three carriers means three numbers people can try.')}`}
+ case 9:{const G=gates(),Fs=activeFns();const fix={'Complete':6,'Monitored':7,'Distinguishable':5,'Feasible':4,'Survives every drill':3};
+  return `<p>Two checks run on your plan: <b>outage drills</b> (does each ladder keep working when networks, power or sites fail?) and <b>readiness gates</b> (the CISA criteria plus monitoring).</p>
+  <div class="wzcard"><b>Drills</b>${Fs.map(f=>{const ok=SCEN.filter(s=>drillF(f.id,s).ok).length;return `<div class="row" style="gap:8px"><span class="st ${ok===SCEN.length?'ok':'no'}">${ok}/${SCEN.length}</span><span>${esc(f.name)}</span></div>`}).join('')}</div>
+  <div class="wzgates">${G.map(g=>`<div class="gate"><span class="st ${g.ok?'ok':'no'}">${g.ok?'PASS':'OPEN'}</span><div><b>${g.k}</b><small>${g.d}</small>${!g.ok&&g.miss&&!g.att?`<div class="miss">${g.miss}</div>${fix[g.k]?`<button type="button" class="btn sm" data-act="onbGo" data-i="${fix[g.k]}">Fix this</button>`:''}`:''}${g.att?`<label class="row" style="gap:6px;margin-top:4px"><input type="checkbox" data-act="wzAtt" data-k="${g.att}" ${S.attest[g.att]?'checked':''}> I confirm this</label>`:''}</div></div>`).join('')}</div>
+  ${wzTip('Open items are not failures. They are your to-do list before testing.')}`}
+ default:{const G=gates(),ok=G.filter(g=>g.ok).length;
+  return `<p>Your plan: <b>${ok} of ${G.length}</b> readiness checks passing${ok===G.length?'. It is ready for testing.':'. Finish the open items any time from the full app.'}</p>
+  <div class="wzcard"><b>Take it with you</b><div class="row" style="gap:8px"><button type="button" class="btn pri" data-act="pdf">Download shared plan (PDF)</button><button type="button" class="btn" data-act="saveFile">Save progress</button><button type="button" class="btn" data-act="csv">Export CSV</button></div><span class="muted" style="font-size:12.5px">The shared plan is what you give to others. Save progress lets you continue later or on another device.</span></div>
+  <div class="wzcard"><b>Now test it</b><ol><li>Make a real two-way contact on each rung, starting with the lowest.</li><li>Write the date in "Last tested" and repeat on the schedule you set.</li><li>Print a copy and keep it where you can find it without power or network.</li></ol></div>
+  <div class="wzcard"><b>What next?</b><span class="muted" style="font-size:13px">The same flow works for a Unit, Agency, State or Region plan: pick a tier at the top of the full app. Use <b>Guided setup</b> any time to come back here.</span></div>`}}}
+function wzRender(){const st=WZ[ONB],last=ONB===WZ.length-1,card=$('onbC'),old=$('onbB');const top=old?old.scrollTop:0;
+ card.innerHTML=`<div class="wzh0"><div class="row" style="justify-content:space-between;gap:8px"><span class="mstep">Step ${ONB+1} of ${WZ.length} · ${st.n}</span><button type="button" class="btn sm" data-act="onbClose">Save and exit</button></div><h2 id="onbT">${st.t}</h2><div class="wzp" role="progressbar" aria-valuemin="1" aria-valuemax="${WZ.length}" aria-valuenow="${ONB+1}"><i style="width:${(ONB+1)/WZ.length*100}%"></i></div></div>
+ <div class="wzb" id="onbB">${wzBody()}</div>
+ <div class="wzf"><div class="dots" role="group" aria-label="Steps">${WZ.map((x,i)=>`<button type="button" data-act="onbGo" data-i="${i}" aria-label="Step ${i+1}: ${x.n}" ${i===ONB?'aria-current="step"':''}></button>`).join('')}</div>
+ <div class="row" style="gap:8px">${ONB>0?'<button type="button" class="btn" data-act="onbBack">Back</button>':''}<button type="button" class="btn pri" data-act="${last?'onbClose':'onbNext'}">${last?'Finish':'Next'}</button></div></div>`;
+ const nb=$('onbB');if(nb)nb.scrollTop=top}
+function onbOpen(){if(TIER!=='personal'){save();TIER='personal';loadState();render()}
+ let n=0;try{n=+localStorage.getItem('pace-snap-onb-step')||0}catch(e){}ONB=Math.min(Math.max(n,0),WZ.length-1);wzRender();$('onb').hidden=false;$('onbC').focus()}
+function onbClose(){$('onb').hidden=true;wzStore();render();try{localStorage.setItem('pace-snap-onb','1')}catch(e){}}
+function wzGo(i){if(i>ONB){if(ONB===2&&!activeFns().length)return toast('Keep at least one reason switched on');if(ONB===3&&!invList().length)return toast('Add at least one method you have')}
+ ONB=Math.min(Math.max(i,0),WZ.length-1);wzStore();render();wzRender();const b=$('onbB');if(b)b.scrollTop=0;$('onbC').focus()}
+function wzIn(t,w,ev){const id=t.dataset.id;const text=['who','base','contact','rd','sched','tested','altc','altn'].includes(w);if(text!==(ev==='input'))return;
+ const all=()=>activeFns();
+ switch(w){
+ case 'who':case 'base':S[w]=t.value;save();break;
+ case 'contact':all().forEach(f=>{(S.contact[f.id]=S.contact[f.id]||{})[id]=t.value});save();break;
+ case 'rd':wzMon(id,{rd:t.value});break;
+ case 'sched':wzMon(id,{sched:t.value});break;
+ case 'tested':all().forEach(f=>{(S.tested[f.id]=S.tested[f.id]||{})[id]=t.value});save();break;
+ case 'altc':S.alts[+t.dataset.i].contact=t.value;save();break;
+ case 'altn':S.alts[+t.dataset.i].note=t.value;save();break;
+ case 'rate':{const a=asset(id),r=[...effR(a)];r[+t.dataset.k]=+t.value;S.rate[id]=r;wzSync();break}
+ case 'tab':S.tab=t.value;render();wzRender();break;
+ case 'swap':{const f=curTab(),ids=[...ladderIds(f)];ids[+t.dataset.i]=t.value;S.manual[f]=ids;wzSync();break}
+ case 'monm':{const o={m:t.value};const df=monDefault(asset(id));if(t.value==='trig'){const cur=monEff(wzUsed().find(u=>u.A.id===id).fns[0].id,id);o.t=(cur.t&&cur.t.length)?cur.t:[...DEFT];o.rd=cur.rd||'15 minutes'}wzMon(id,o);wzSync();break}}}
 const slug=x=>String(x||'plan').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)||'plan';
 function dl(name,text,type){const u=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 function cleanPlan(k,p){const old=TIER;TIER=k;let b;try{b=fresh()}finally{TIER=old}const o={};
@@ -915,8 +1039,19 @@ function loadSample(){const t=T();S=fresh();S.sample=true;
 const ACT={
  sample:()=>{const has=invList().length||S.who;if(has&&!SAMPLEARM){SAMPLEARM=true;render();clearTimeout(ACT.h);ACT.h=setTimeout(()=>{SAMPLEARM=false;render()},5000);return}SAMPLEARM=false;loadSample();toast('Sample plan loaded')},
  allPdf:(d,el)=>exportAll(el),
- help:()=>onbOpen(),onbClose:()=>onbClose(),onbNext:()=>{ONB=Math.min(ONB+1,ONB_STEPS.length-1);onbRender();$('onbC').focus()},onbBack:()=>{ONB=Math.max(ONB-1,0);onbRender();$('onbC').focus()},onbGo:d=>{ONB=+d.i;onbRender();$('onbC').focus()},
- onbTier:d=>{if(d.id!==TIER){save();TIER=d.id;loadState();render()}onbRender()},
+ help:()=>onbOpen(),onbClose:()=>onbClose(),onbNext:()=>wzGo(ONB+1),onbBack:()=>wzGo(ONB-1),onbGo:d=>wzGo(+d.i),
+ wzSample:()=>{onbClose();loadSample();toast('Sample plan loaded')},
+ wzFn:d=>{S.fns[+d.idx].on=!S.fns[+d.idx].on;wzSync()},
+ wzFnAdd:d=>{const n=(d.n||($('w-newfn').value||'')).trim();if(!n)return toast('Name the reason first');const id='f'+Date.now();S.fns.push({id,name:n,type:d.n?'any':$('w-newtype').value,on:true,custom:true});wzSync()},
+ wzInv:d=>{S.inv[d.id]=!S.inv[d.id];wzSync()},
+ wzAddAsset:()=>{const n=($('w-cn').value||'').trim();if(!n)return toast('Name the item first');const c=$('w-cc').value,id='x'+Date.now();
+  S.custom.push({id,g:$('w-cg').value,name:n,path:[$('w-cp').value],cond:c?[c]:[],r:[2,2,2,2],bw:3,m:($('w-cm').value||'').trim(),note:'Added by you.'});S.inv[id]=true;wzSync()},
+ wzAuto:()=>{delete S.manual[curTab()];wzSync()},
+ wzMonAll:()=>{wzUsed().forEach(u=>wzMon(u.A.id,{}));wzSync()},
+ wzTrig:d=>{const u=wzUsed().find(x=>x.A.id===d.id);const cur=monEff(u.fns[0].id,d.id);const t=cur.t||[];wzMon(d.id,{m:'trig',t:t.includes(d.e)?t.filter(x=>x!==d.e):[...t,d.e],rd:cur.rd||'15 minutes'});wzSync()},
+ wzAltAdd:()=>{const v=$('w-altpick').value;if(!v)return toast('Choose a method first');S.alts.push({id:v,contact:'',note:''});wzSync()},
+ wzAltDel:d=>{S.alts.splice(+d.i,1);wzSync()},
+ wzAtt:d=>{S.attest[d.k]=!S.attest[d.k];save();wzSync()},
  saveFile:()=>saveFile(),loadFile:()=>{$('loadfile').value='';$('loadfile').click()},
  csv:()=>{dl(`PACE-Snap-${slug(T().label)}-${slug(S.who)}-${new Date().toISOString().slice(0,10)}.csv`,buildCSV(CSVC),'text/csv;charset=utf-8');toast(CSVC?'CSV exported with contact details':'CSV exported without contact details')},
  csvc:(d,el)=>{CSVC=el.checked},
@@ -955,8 +1090,10 @@ const CHG={
 document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a&&ACT[a.dataset.act]){if(a.type!=='checkbox')e.preventDefault();ACT[a.dataset.act](a.dataset,a)}});
 document.addEventListener('input',e=>{const t=e.target,b=t.dataset.bind;if(!b)return;const k=b.split('.');let o=S;for(let i=0;i<k.length-1;i++){o[k[i]]=o[k[i]]||{};o=o[k[i]]}o[k[k.length-1]]=t.value;save();light()});
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset.chg)CHG[t.dataset.chg](t);else if(t.dataset.rer)render()});
-document.addEventListener('keydown',e=>{if($('onb').hidden)return;if(e.key==='Escape')onbClose();else if(e.key==='Tab'){const f=[...$('onbC').querySelectorAll('button')];if(!f.length)return;const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i===f.length-1)){e.preventDefault();f[0].focus()}}});
+document.addEventListener('keydown',e=>{if($('onb').hidden)return;if(e.key==='Escape')onbClose();else if(e.key==='Tab'){const f=[...$('onbC').querySelectorAll('button,input,select')];if(!f.length)return;const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i===f.length-1)){e.preventDefault();f[0].focus()}}});
 $('onb').addEventListener('click',e=>{if(e.target===$('onb'))onbClose()});
+$('onbC').addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.w)wzIn(t,t.dataset.w,'input')});
+$('onbC').addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.w)wzIn(t,t.dataset.w,'change')});
 $('loadfile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(f.size>5e6)return toast('That file is too large');const r=new FileReader();r.onload=()=>loadFromText(String(r.result));r.onerror=()=>toast('Could not read that file');r.readAsText(f)});
 loadState();render();
 let seen=false;try{seen=!!localStorage.getItem('pace-snap-onb')}catch(e){}if(!seen)onbOpen();

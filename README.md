@@ -20,6 +20,10 @@ PACE (Primary, Alternate, Contingency, Emergency) is a method for deciding in ad
 
 The shared plan is about **inbound contact**: how counties, partners, responders and leadership get hold of you, and whether anyone is actually monitoring each method when they try.
 
+## Guided setup
+
+First-time visitors get an 11-step guided setup that teaches the method while building their own **Personal PACE plan**: the PACE idea, reasons people need to reach you, your kit, rating your gear on the four checks, your ladder, contacts, when you are listening, backup methods, a readiness check, and sharing. Answers save as you go, and **Guided setup** resumes where you left off.
+
 ## How it works
 
 1. **Reasons to reach you.** Keep or edit the functions people need you for. Each gets its own ladder.
@@ -40,7 +44,7 @@ Extra carriers and spare methods go under **Backup methods**, so the ladders sta
 - Shared plan PDF (single plan or every plan in one file) and a separate planning report
 - CSV export for compiling plans across organizations. Contact details are left out unless you tick the box.
 - Save progress to a file and load it later, or on another device
-- Guided onboarding on first visit, and a **Load sample plan** button to see a finished plan
+- Guided setup that builds your Personal plan as you learn the tool, and a **Load sample plan** button to see a finished plan
 - Light and dark themes, works on a phone, no tracking
 
 ## Privacy
