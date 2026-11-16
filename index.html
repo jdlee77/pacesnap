@@ -162,6 +162,12 @@ input[type=text],select{background:var(--panel-2);border:1px solid var(--line);b
 .trig{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px dashed var(--line);border-radius:8px;margin-left:20px}
 .trig .arrow{font-family:var(--f-mono);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 
+/* private-sector partners */
+.pp{border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
+.pp summary{cursor:pointer;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ppb{padding:0 12px 12px;display:flex;flex-direction:column;gap:10px}
+.chip.okc{border-color:var(--good);color:var(--good)}.chip.noc{border-color:var(--bad);color:var(--bad)}
+
 /* tables */
 .tw{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
@@ -242,9 +248,11 @@ textarea{width:100%;min-height:150px;font-family:var(--f-mono);font-size:12px;ba
   <div id="matrix" style="display:contents"></div>
   <div id="drill" style="display:contents"></div>
   <div id="ready" style="display:contents"></div>
+  <div id="partners" style="display:contents"></div>
 </div></main>
 <div class="toast" id="toast" role="status"></div>
 <input type="file" id="loadfile" accept=".json,application/json" hidden>
+<input type="file" id="ppfile" accept=".csv,text/csv" multiple hidden>
 <div class="modal" id="onb" role="dialog" aria-modal="true" aria-labelledby="onbT" hidden><div class="mcard wz" id="onbC" tabindex="-1"></div></div>
 
 <script>
@@ -483,7 +491,7 @@ const TIERS={
 let TIER='personal';try{TIER=localStorage.getItem('pace-snap-tier')||'personal'}catch(e){}if(!TIERS[TIER])TIER='personal';
 const T=()=>TIERS[TIER];
 let S,SCEN,ASSETS;
-const fresh=()=>({sample:false,who:'',by:'',base:'',
+const fresh=()=>({sample:false,who:'',by:'',base:'',partners:[],
  fns:JSON.parse(JSON.stringify(T().fns)),inv:{},custom:[],alts:[],manual:{},rate:{},contact:{},owner:{},mode:{},mon:{},tested:{},cad:{},trig:{},attest:{acc:false,suit:false},tab:T().fns[0].id});
 function loadState(){SCEN=T().scen;ASSETS=T().assets;let raw=null;try{raw=localStorage.getItem('pace-snap-v5-'+TIER)}catch(e){}
  try{S=Object.assign(fresh(),raw?JSON.parse(raw):{})}catch(e){S=fresh()}}
@@ -710,7 +718,7 @@ function renderReady(){if(!invList().length){$('ready').innerHTML='';return}
  <div class="row"><button type="button" class="btn pri" data-act="pdf">Download shared plan (PDF)</button><button type="button" class="btn" data-act="pdfFull">Planning report (PDF)</button><button type="button" class="btn" data-act="allPdf">All plans (one PDF)</button><button type="button" class="btn" data-act="csv">Export CSV</button><button type="button" class="btn" data-act="copy">Copy as text</button><button type="button" class="btn" data-act="reset">${RESETARM?'Erase this plan? Click again':'Start over'}</button></div>
  <label class="row" style="gap:6px;font-size:13px"><input type="checkbox" data-act="csvc" ${CSVC?'checked':''}> Include contact details in the CSV (numbers, frequencies, call signs, names, reach-out points). Leave off when compiling plans across organizations.</label>
  <textarea id="out" readonly aria-label="Plan as plain text">${esc(planText())}</textarea></section>`}
-function render(){curTab();computeAutos();renderHead();renderFns();renderStatus();renderKit();renderPlan();renderMatrix();renderDrill();renderReady();save()}
+function render(){curTab();computeAutos();renderHead();renderFns();renderStatus();renderKit();renderPlan();renderMatrix();renderDrill();renderReady();renderPartners();save()}
 function light(){renderStatus();renderMatrix();renderDrill();renderReady()}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2200)}
 
@@ -869,6 +877,94 @@ async function exportAll(btn){const label=btn&&btn.textContent;if(btn){btn.disab
  if(doc){doc.setProperties({title:'PACE plans - how to reach us',subject:'PACE contact plans',creator:'PACE Snap'});doc.save(`PACE-All-Plans-${new Date().toISOString().slice(0,10)}.pdf`);toast(`${n} plan${n===1?'':'s'} in one PDF`)}
  else if(!n)toast('No plans to export yet. Build at least one first.');
  const b2=btn&&document.getElementById(btn.id);if(b2){b2.disabled=false}}
+/* ================= private-sector partners =================
+   Imports the public safety contact sheets that companies export from PACE Snap for Business Continuity
+   (CSV schema pace-snap-responder-1): their 24/7, non-public numbers. These are numbers this plan uses to reach
+   partners, so they never go into the shared "how to reach us" plan, its CSV or the plain-text copy. */
+const PP_TIERS=new Set(['agency','state','region']);
+const PP_SCHEMA='pace-snap-responder-1';
+const PP_COLS=['schema','exported','review_by','status','organization','plan_level','location','address','rung','method','contact_24_7','monitoring','answered_by','can_authorize','verification','capabilities','notes'];
+const PP_RUNGS=['Primary','Alternate','Contingency','Emergency'];
+const ppOn=()=>PP_TIERS.has(TIER);
+const ppList=()=>{S.partners=S.partners||[];return S.partners};
+const ppToday=()=>new Date().toISOString().slice(0,10);
+const ppOverdue=p=>!!p.review&&/^\d{4}-\d{2}-\d{2}$/.test(p.review)&&p.review<ppToday();
+const ppKey=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+/* RFC 4180 CSV: quoted fields, doubled quotes, CR/LF line ends, optional BOM. */
+function parseCSV(txt){const rows=[];let row=[],f='',q=false,i=0;txt=String(txt).replace(/^﻿/,'');
+ for(;i<txt.length;i++){const c=txt[i];
+  if(q){if(c==='"'){if(txt[i+1]==='"'){f+='"';i++}else q=false}else f+=c;continue}
+  if(c==='"')q=true;else if(c===','){row.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&txt[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}
+ if(f!==''||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>x.trim()!==''))}
+/* Undo the spreadsheet-formula guard ('=..., '+...) the exporter adds. */
+const unguard=v=>/^'[=+\-@]/.test(v)?v.slice(1):v;
+function ppParse(txt){const rows=parseCSV(txt);if(!rows.length)throw new Error('The file is empty');
+ const H=rows[0].map(h=>h.trim().toLowerCase()),ix=Object.fromEntries(PP_COLS.map(c=>[c,H.indexOf(c)]));
+ if(ix.schema<0||ix.organization<0||ix.rung<0||ix.contact_24_7<0)throw new Error('That is not a PACE Snap public safety contact sheet');
+ const by=new Map();
+ rows.slice(1).forEach(r=>{const g=c=>ix[c]<0?'':unguard(String(r[ix[c]]??'').trim()).slice(0,500);if(g('schema')!==PP_SCHEMA)return;const org=g('organization');if(!org)return;
+  const k=ppKey(org);if(!by.has(k))by.set(k,{org,level:g('plan_level'),area:'',exported:g('exported'),review:g('review_by'),status:g('status'),auth:'',verify:'',caps:[],rungs:[],locs:[]});const p=by.get(k);
+  const rung=g('rung');
+  if(PP_RUNGS.includes(rung)){if(p.rungs.length<4&&!p.rungs.some(x=>x.rung===rung))p.rungs.push({rung,method:g('method'),contact:g('contact_24_7'),mon:g('monitoring'),by:g('answered_by'),next:g('notes')});
+   if(!p.area)p.area=g('address');if(!p.auth)p.auth=g('can_authorize');if(!p.verify)p.verify=g('verification');if(!p.caps.length&&g('capabilities'))p.caps=g('capabilities').split('|').map(s=>s.trim()).filter(Boolean)}
+  else if(rung==='Site'&&p.locs.length<50)p.locs.push({name:g('location'),addr:g('address'),contact:g('contact_24_7'),notes:g('notes')})});
+ const out=[...by.values()].filter(p=>p.rungs.length);out.forEach(p=>p.rungs.sort((a,b)=>PP_RUNGS.indexOf(a.rung)-PP_RUNGS.indexOf(b.rung)));
+ if(!out.length)throw new Error('No company contacts found in that file');return out}
+function ppImport(texts){let add=0,upd=0,bad=0;const L=ppList();
+ let why='';texts.forEach(t=>{let ps;try{ps=ppParse(t)}catch(e){bad++;why=e.message;return}
+  ps.forEach(p=>{p.imported=ppToday();const i=L.findIndex(x=>ppKey(x.org)===ppKey(p.org));if(i>=0){L[i]=p;upd++}else{L.push(p);add++}})});
+ L.sort((a,b)=>a.org.localeCompare(b.org));render();
+ const msg=[add?add+' partner'+(add===1?'':'s')+' added':'',upd?upd+' updated':'',bad?(add||upd?`${bad} file${bad===1?'':'s'} skipped (not a contact sheet)`:why):''].filter(Boolean).join(', ');if(msg)toast(msg)}
+function ppFlags(p){const f=[];if(p.status!=='ready')f.push(['bad','The company marked this sheet as a draft. Some numbers may not be staffed 24/7 or may be public.']);
+ if(ppOverdue(p))f.push(['bad',`Overdue for review since ${p.review}. Ask ${p.org} for a fresh sheet before relying on it.`]);
+ if(!p.verify)f.push(['warn','No caller verification is listed. Agree one with the company.']);return f}
+function renderPartners(){const el=$('partners');if(!ppOn()){el.innerHTML='';return}const L=ppList(),od=L.filter(p=>ppOverdue(p)||p.status!=='ready').length;
+ el.innerHTML=`<section class="card"><h2><span class="n">6</span>Private-sector partners</h2>
+ <p class="muted">Import the public safety contact sheets that companies, sector groups and business EOCs export from PACE Snap for Business Continuity. They hold each company's 24/7, non-public numbers, in the order to try them. They are numbers <b>you</b> use to reach partners, so they stay out of your shared plan, its CSV and the plain-text copy.</p>
+ <div class="row" style="gap:8px"><button type="button" class="btn pri sm" data-act="ppImport">Import contact sheets (CSV)</button>${L.length?`<button type="button" class="btn sm" data-act="ppPdf">Partner directory (PDF)</button><button type="button" class="btn sm" data-act="ppCsv">Partner directory (CSV)</button>`:''}<span class="chip">${L.length} partner${L.length===1?'':'s'}</span></div>
+ ${od?`<div class="flag warn">${od} partner sheet${od===1?' needs':'s need'} attention: draft or overdue for review.</div>`:''}
+ ${L.length?'':'<div class="tip"><b>No partners yet.</b> Ask the companies in your area to fill in the <b>Public safety contact sheet</b> in PACE Snap for Business Continuity and send you the CSV. You can select several files at once, or a combined directory from another office.</div>'}
+ ${L.map((p,i)=>`<details class="pp"${L.length<=3?' open':''}><summary><b>${esc(p.org)}</b> <span class="chip">${esc(p.level||'Company')}</span> <span class="chip ${p.status==='ready'&&!ppOverdue(p)?'okc':'noc'}">${p.status!=='ready'?'Draft':ppOverdue(p)?'Overdue':'Review by '+esc(p.review||'?')}</span></summary>
+  <div class="ppb">${ppFlags(p).map(f=>`<div class="flag ${f[0]}">${esc(f[1])}</div>`).join('')}
+  <div class="tw"><table><thead><tr><th></th><th>24/7 contact</th><th>Method</th><th>Monitored</th><th>Answered by</th></tr></thead><tbody>${p.rungs.map(r=>{const l=LEVELS[PP_RUNGS.indexOf(r.rung)];return `<tr><td><span class="lvl sm ${l.c}">${l.k}</span></td><td><b>${esc(r.contact||'(not set)')}</b></td><td>${esc(r.method)}</td><td>${esc(r.mon)}</td><td>${esc(r.by)}</td></tr>`}).join('')}</tbody></table></div>
+  <div class="grid2"><div><span class="eyebrow">Who answers / can authorize</span><div>${esc(p.auth||'(not given)')}</div></div><div><span class="eyebrow">How they verify you</span><div>${esc(p.verify||'(not given)')}</div></div></div>
+  ${p.caps.length?`<div><span class="eyebrow">They can help with</span><ul class="alts">${p.caps.map(c=>`<li>${esc(c)}</li>`).join('')}</ul></div>`:''}
+  ${p.locs.length?`<div class="tw"><table><thead><tr><th>Site</th><th>Address</th><th>On-site 24/7</th><th>Before you arrive</th></tr></thead><tbody>${p.locs.map(l=>`<tr><td><b>${esc(l.name)}</b></td><td>${esc(l.addr)}</td><td>${esc(l.contact)}</td><td>${esc(l.notes)}</td></tr>`).join('')}</tbody></table></div>`:''}
+  <div class="row" style="gap:8px"><span class="muted" style="font-size:12.5px">${esc(p.area||'')}${p.area?' · ':''}Exported ${esc(p.exported||'?')} · imported ${esc(p.imported||'?')}</span><button type="button" class="btn sm" data-act="ppDel" data-idx="${i}">${PPDEL===i?'Remove? Click again':'Remove'}</button></div></div></details>`).join('')}
+ <div class="flag warn">Partner numbers are not for public release. Keep exports of this directory inside public safety.</div></section>`}
+function buildPPCSV(){const rows=[PP_COLS];ppList().forEach(p=>{const base=[PP_SCHEMA,p.exported||'',p.review||'',p.status||'',p.org,p.level||''];
+ p.rungs.forEach(r=>rows.push([...base,'(all locations)',p.area||'',r.rung,r.method,r.contact,r.mon,r.by,p.auth||'',p.verify||'',p.caps.join(' | '),r.next||'']));
+ p.locs.forEach(l=>rows.push([...base,l.name,l.addr,'Site','On-site desk',l.contact,'','','','','',l.notes]))});
+ return '﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n'}
+function buildPPPDF(){const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:'pt',format:'letter'});const t=T(),L=ppList();
+ const W=612,H=792,M=40,CW=W-2*M;const C={ink:[18,33,42],muted:[85,102,110],line:[200,210,212],accent:[14,106,130],white:[255,255,255],bad:[180,46,46],badBg:[252,232,230],panel:[243,246,246],lv:[[60,140,62],[217,180,0],[224,122,31],[199,59,59]]};
+ const who=pdfSafe(S.who||t.label),today=ppToday();
+ const base={theme:'grid',rowPageBreak:'avoid',margin:{left:M,right:M,top:M+16,bottom:56},styles:{font:'helvetica',fontSize:8.5,cellPadding:4,textColor:C.ink,lineColor:C.line,lineWidth:.5,valign:'middle',overflow:'linebreak'},headStyles:{fillColor:C.ink,textColor:C.white,fontStyle:'bold',fontSize:7.5}};
+ let y;const ensure=n=>{if(y+n>H-70){doc.addPage();y=M+20}};
+ doc.setFillColor(...C.ink);doc.rect(0,0,W,104,'F');doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(125,200,220);doc.text('PRIVATE-SECTOR PARTNER DIRECTORY   |   '+t.label.toUpperCase()+' PACE PLAN',M,36);
+ let fs=22;doc.setFontSize(fs);while(fs>11&&doc.getTextWidth(who)>CW-170){fs-=1;doc.setFontSize(fs)}doc.setTextColor(...C.white);doc.text(who,M,62);
+ doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(190,205,210);doc.text(`${L.length} partner${L.length===1?'':'s'}   |   Generated ${today}`,M,84);
+ const pill='PUBLIC SAFETY USE ONLY';doc.setFont('helvetica','bold');doc.setFontSize(8.5);const pw=doc.getTextWidth(pill)+22;doc.setFillColor(...C.bad);doc.roundedRect(W-M-pw,30,pw,22,4,4,'F');doc.setTextColor(...C.white);doc.text(pill,W-M-pw/2,44.5,{align:'center'});
+ y=128;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...C.ink);doc.text(doc.splitTextToSize('24/7 non-public numbers that companies gave to public safety. Call in order, P to E. Give your name, agency and a callback through your dispatch center. Do not publish or share outside public safety.',CW),M,y);y+=34;
+ L.forEach(p=>{ensure(150);doc.setFont('helvetica','bold');doc.setFontSize(11.5);doc.setTextColor(...C.ink);doc.text(pdfSafe(p.org),M,y,{maxWidth:CW-170});
+  const od=ppOverdue(p),dr=p.status!=='ready';doc.setFontSize(8.5);doc.setTextColor(...(od||dr?C.bad:C.muted));doc.text(dr?'DRAFT SHEET':od?'OVERDUE: review by '+pdfSafe(p.review):'Review by '+pdfSafe(p.review||'?'),W-M,y,{align:'right'});
+  doc.setDrawColor(...C.accent);doc.setLineWidth(1.5);doc.line(M,y+5,M+30,y+5);doc.setDrawColor(...C.line);doc.setLineWidth(.5);doc.line(M+30,y+5,W-M,y+5);y+=12;
+  doc.autoTable({...base,startY:y,head:[['','24/7 contact','Method','Monitored','Answered by']],body:p.rungs.map(r=>[r.rung[0],pdfSafe(r.contact),pdfSafe(r.method),pdfSafe(r.mon),pdfSafe(r.by)]),
+   columnStyles:{0:{cellWidth:22,halign:'center',fontStyle:'bold',fontSize:11},1:{cellWidth:150,fontStyle:'bold',fontSize:10}},didParseCell:d=>{if(d.section==='body'&&d.column.index===0)d.cell.styles.fillColor=C.lv[PP_RUNGS.indexOf(p.rungs[d.row.index].rung)]}});y=doc.lastAutoTable.finalY+4;
+  const info=[['Who answers / can authorize',pdfSafe(p.auth||'(not given)')],['How they verify you',pdfSafe(p.verify||'(not given)')]];if(p.caps.length)info.push(['They can help with',pdfSafe(p.caps.join('; '))]);
+  doc.autoTable({...base,startY:y,body:info,columnStyles:{0:{cellWidth:150,fontStyle:'bold'}}});y=doc.lastAutoTable.finalY+4;
+  if(p.locs.length){doc.autoTable({...base,startY:y,head:[['Site','Address','On-site 24/7','Before you arrive']],body:p.locs.map(l=>[pdfSafe(l.name),pdfSafe(l.addr),pdfSafe(l.contact),pdfSafe(l.notes)]),columnStyles:{0:{cellWidth:110,fontStyle:'bold'},2:{cellWidth:100,fontStyle:'bold'}}});y=doc.lastAutoTable.finalY+4}
+  y+=18});
+ const n=doc.getNumberOfPages();for(let pg=1;pg<=n;pg++){doc.setPage(pg);
+  if(pg>1){doc.setFillColor(...C.ink);doc.rect(0,0,W,22,'F');doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...C.white);doc.text('PRIVATE-SECTOR PARTNER DIRECTORY  |  '+who.toUpperCase(),M,14);doc.setTextColor(255,170,160);doc.text('PUBLIC SAFETY USE ONLY',W-M,14,{align:'right'})}
+  doc.setDrawColor(...C.line);doc.setLineWidth(.5);doc.line(M,H-40,W-M,H-40);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.muted);
+  doc.text('Contains non-public numbers. Public safety use only. Built with PACE Snap.',M,H-28);doc.text(`Page ${pg} of ${n}`,W-M,H-28,{align:'right'})}
+ doc.setProperties({title:`Private-sector partner directory - ${who}`,subject:'24/7 non-public partner contacts',creator:'PACE Snap'});return doc}
+async function exportPPPDF(btn){const label=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent='Building PDF…'}
+ try{await loadPdfLibs()}catch(e){toast('Couldn\'t load the PDF engine. Connect to the internet and try again.');if(btn){btn.disabled=false;btn.textContent=label}return}
+ try{buildPPPDF().save(`Partner-Directory-${slug(S.who||T().label)}-${ppToday()}.pdf`);toast('Directory downloaded. Public safety use only.')}catch(e){console.error(e);toast('PDF export failed: '+e.message)}
+ if(btn){btn.disabled=false;btn.textContent=label}}
+let PPDEL=-1;
 /* ================= events ================= */
 /* ================= onboarding, save/load, csv ================= */
 let CSVC=false,ONB=0,SAMPLEARM=false,RESETARM=false;
@@ -1003,7 +1099,7 @@ function loadFromText(txt){let o;try{o=JSON.parse(txt)}catch(e){return toast('Th
  const mem={};let n=0;Object.keys(TIERS).forEach(k=>{const p=o.plans[k];if(!p||typeof p!=='object'||Array.isArray(p))return;const c=cleanPlan(k,p);mem[k]=c;n++;try{localStorage.setItem('pace-snap-v5-'+k,JSON.stringify(c))}catch(e){}});
  if(!n)return toast('No plans found in that file');
  TIER=TIERS[o.tier]&&mem[o.tier]?o.tier:Object.keys(mem)[0];loadState();if(mem[TIER])S=mem[TIER];render();window.scrollTo({top:0});toast(`Loaded ${n} plan${n===1?'':'s'}`)}
-function csvCell(v){v=String(v??'');if(/^[=+\-@\t\r]/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function csvCell(v){v=String(v??'');if(/^[=+\-@\t\r]/.test(v)&&!/^\+[\d\s().-]+$/.test(v))v="'"+v;return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function buildCSV(inc){const t=T(),G=gates(),ok=G.filter(g=>g.ok).length,ready=G.every(g=>g.ok),now=new Date().toISOString().slice(0,10);
  const H=['schema','exported','tier','plan_name','jurisdiction_or_region','prepared_by','plan_ready','gates_passed','gates_total','function','function_type','priority_tier','rto','reach_out_point','rung','asset','failure_paths','mode','monitoring','monitor_triggers','ready_within','schedule','last_tested','test_cadence','step_down_trigger','contact','answered_by','note'];
  const base=[ 'pace-snap-csv-1',now,t.label,S.who,S.base,inc?S.by:'',ready?'yes':'no',ok,G.length];
@@ -1034,6 +1130,9 @@ function loadSample(){const t=T();S=fresh();S.sample=true;
   (S.tested[f.id]=S.tested[f.id]||{})[r.id]=d})});
  const rest=allAssets().filter(a=>!used.has(a.id)&&['att','vz','tmo','net','wire','starlink','iridium','mesh','hf'].some(p=>a.path.includes(p)));
  const seen=new Set();rest.forEach(a=>{const k=a.path.join('+');if(seen.has(k)||S.alts.length>=4)return;seen.add(k);S.alts.push({id:a.id,contact:sampleContact(a,n++),note:'Spare method'})});
+ if(PP_TIERS.has(TIER)){const rv=new Date(Date.now()+60*864e5).toISOString().slice(0,10);S.partners=[{org:'SAMPLE - Example Logistics, Inc.',level:'Company',area:'Example location',exported:d,review:rv,status:'ready',imported:d,auth:'Security operations supervisor: site access, shutoffs, release of video',verify:'They call back through your dispatch center\'s published line before giving codes or hazmat details',caps:['Site access, keys and gate codes','Hazardous materials and chemical inventory','Resources we can offer (fuel, generators, vehicles, water, space)'],
+  rungs:[{rung:'Primary',method:'Security operations center line',contact:'(555) 010-500',mon:'Always (24/7)',by:'SOC supervisor'},{rung:'Alternate',method:'SOC backup line (other carrier)',contact:'(555) 010-501',mon:'Always (24/7)',by:'SOC supervisor'},{rung:'Contingency',method:'Iridium satellite phone',contact:'+8816 555 0500',mon:'Always (24/7)',by:'Duty manager'},{rung:'Emergency',method:'Liaison seat at the government EOC',contact:'Private-sector desk, EOC',mon:'Always (24/7)',by:'Company liaison'}],
+  locs:[{name:'Example Distribution Center',addr:'100 Example Way, Example City',contact:'(555) 010-300',notes:'Knox box at main gate. Ammonia refrigeration in building B.'}]}]}
  gates().forEach(g=>{if(g.att)S.attest[g.att]=true});
  S.tab=activeFns()[0].id;render();window.scrollTo({top:0})}
 const ACT={
@@ -1075,6 +1174,10 @@ const ACT={
  pdfFull:(d,el)=>exportPDF(el,'full'),
  altAdd:()=>{const v=$('altpick').value;if(!v)return toast('Choose a method first');S.alts=S.alts||[];S.alts.push({id:v,contact:'',note:''});render()},
  altDel:d=>{S.alts.splice(+d.idx,1);render()},
+ ppImport:()=>{$('ppfile').value='';$('ppfile').click()},
+ ppPdf:(d,el)=>exportPPPDF(el),
+ ppCsv:()=>{dl(`Partner-Directory-${slug(S.who||T().label)}-${ppToday()}.csv`,buildPPCSV(),'text/csv;charset=utf-8');toast('Directory CSV downloaded. Public safety use only.')},
+ ppDel:d=>{const i=+d.idx;if(PPDEL!==i){PPDEL=i;render();clearTimeout(ACT.ph);ACT.ph=setTimeout(()=>{PPDEL=-1;render()},5000);return}PPDEL=-1;const p=ppList().splice(i,1)[0];render();toast((p?p.org:'Partner')+' removed')},
  monOk:d=>{monSet(d.f,d.id);render()},
  monTrig:d=>{const o=monSet(d.f,d.id);const df=monDefault(asset(d.id));const cur=o.t||[...df.t];o.t=cur.includes(d.e)?cur.filter(x=>x!==d.e):[...cur,d.e];o.m='trig';if(o.rd===undefined)o.rd=df.rd||'15 minutes';render()},
  copy:()=>{const ta=$('out');try{navigator.clipboard.writeText(ta.value).then(()=>toast('Plan copied'),()=>{ta.select();toast('Selected. Press Ctrl/Cmd+C')})}catch(e){ta.select();toast('Selected. Press Ctrl/Cmd+C')}},
@@ -1094,6 +1197,8 @@ document.addEventListener('keydown',e=>{if($('onb').hidden)return;if(e.key==='Es
 $('onb').addEventListener('click',e=>{if(e.target===$('onb'))onbClose()});
 $('onbC').addEventListener('input',e=>{const t=e.target;if(t.dataset&&t.dataset.w)wzIn(t,t.dataset.w,'input')});
 $('onbC').addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.w)wzIn(t,t.dataset.w,'change')});
+$('ppfile').addEventListener('change',e=>{const fs=[...(e.target.files||[])];if(!fs.length)return;if(fs.some(f=>f.size>2e6))return toast('One of those files is too large');
+ Promise.all(fs.map(f=>f.text())).then(ppImport,()=>toast('Could not read that file'))});
 $('loadfile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(f.size>5e6)return toast('That file is too large');const r=new FileReader();r.onload=()=>loadFromText(String(r.result));r.onerror=()=>toast('Could not read that file');r.readAsText(f)});
 loadState();render();
 let seen=false;try{seen=!!localStorage.getItem('pace-snap-onb')}catch(e){}if(!seen)onbOpen();

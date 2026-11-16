@@ -70,9 +70,19 @@ The first PDF export loads jsPDF and jsPDF-AutoTable from cdnjs, and the page lo
 - **Download shared plan** gives the PDF to hand to other people.
 - **Planning report** adds the drills, gates and reasoning for your own files.
 - **Export CSV** writes one row per rung (schema `pace-snap-csv-1`) so plans can be combined in a spreadsheet.
+- **Partner directory** exports the imported private-sector contacts (see above).
 - **Save progress** writes a `.json` file with all five tiers. **Load progress** restores it.
 
 Downloads need the page to be served normally. They do not work inside some embedded previews.
+
+## Private-sector partners
+
+Agency, State and Region plans can import the **public safety contact sheets** that companies, sector groups and business EOCs export from [PACE Snap for Business Continuity](https://jdlee77.github.io/pacesnap_corperate/). Each sheet holds a company's 24/7, non-public numbers in P-A-C-E order, who answers and what they can authorize, how they verify that a caller is public safety, what they can help with (site access, hazmat inventory, shutoffs, resources and more), and site notes for responders.
+
+- **Import contact sheets (CSV)** reads one or more `pace-snap-responder-1` files. A combined directory with many companies is split into one partner per company. Importing a company again replaces its entry.
+- Sheets the company marked as a draft, sheets past their review-by date, and sheets with no caller verification are flagged.
+- **Partner directory (PDF / CSV)** exports every partner, marked for public safety use only. The CSV uses the same schema, so an emergency management office or fusion center can pass a combined directory on.
+- Partner numbers are numbers you use to reach companies, so they are **never** included in your shared plan, its CSV or the plain-text copy. They are included in **Save progress** files, so treat those files as sensitive.
 
 ## Limits and assumptions
 
